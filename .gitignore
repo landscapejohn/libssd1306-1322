@@ -1,3 +1,4 @@
+.vs
 *.o
 *.d
 *.so
@@ -5,6 +6,7 @@
 *.log
 .*.swp
 *.tmp
+slnx.sqlite
 TODO
 todo
 tags
