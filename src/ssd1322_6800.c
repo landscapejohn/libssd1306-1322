@@ -20,7 +20,7 @@
 #endif // SSD1306_I2C_GET_ERRFP
 
 // Send data to display
-void writeByte(char bits, bool isCommand)
+void write_byte(char bits, bool isCommand)
 {
     gpioWrite(OLED_D0, (bits & (1 << 0)) > 0 ? 1 : 0);
     gpioWrite(OLED_D1, (bits & (1 << 1)) > 0 ? 1 : 0);
@@ -42,20 +42,20 @@ void writeByte(char bits, bool isCommand)
     }
 }
 
-ssize_t writeDisplay(uint8_t cmd_buf[8193], size_t cmd_sz)
+ssize_t write_display(uint8_t cmd_buf[8193], size_t cmd_sz)
 {
     uint16_t bytesWritten = -1;
 
     if (cmd_sz == 0)
     {
-        writeByte(cmd_buf[0], true);
+        write_byte(cmd_buf[0], true);
         bytesWritten++;
     }
     else
     {
         for (size_t idx = 0; idx <= cmd_sz; idx++)
         {
-            writeByte(cmd_buf[idx], idx == 0 ? true : false);
+            write_byte(cmd_buf[idx], idx == 0 ? true : false);
             bytesWritten++;
         }
     }
@@ -267,7 +267,7 @@ int ssd1322_run_cmd(ssd1322_6800_t *oled, ssd1322_cmd_t cmd, uint8_t *data, size
         fprintf(err_fp, "WARN: Unknown cmd given %d of size %ld\n", cmd, cmd_sz);
         return -1;
     }
-    size_t nb = writeDisplay(cmd_buf, cmd_sz);
+    size_t nb = write_display(cmd_buf, cmd_sz);
     if (nb < 0) {
         oled->err->errnum = errno;
         //strerror_r(oled->err->errnum, oled->err->errbuf, oled->err->errlen);
@@ -334,7 +334,7 @@ int ssd1306_i2c_display_update(ssd1322_6800_t *oled, const ssd1322_framebuffer_t
         memcpy(&(oled->gddram_buffer[1]), fbp->buffer, fbp->len);
     }
     // the rest is framebuffer data for the GDDRAM as in section 8.1.5.2
-    size_t nb = writeDisplay(oled->gddram_buffer, oled->gddram_buffer_len);
+    size_t nb = write_display(oled->gddram_buffer, oled->gddram_buffer_len);
     if (nb < 0) {
         oled->err->errnum = errno;
         fprintf(err_fp, "ERROR: Failed to write %zu bytes of screen buffer to device: %s\n", oled->gddram_buffer_len, oled->err->errbuf);
@@ -508,7 +508,7 @@ ssd1322_6800_t *ssd1306_i2c_open(uint16_t width, uint16_t height, FILE *logerr)
             fprintf(err_fp, "WARN: OLED screen height cannot be %d. has to be either 16, 32, or 64. Using %d\n", height, (oled->width == 96) ? 16 : 64);
             oled->height = (oled->width == 96) ? 16 : 64;
         }
-        // this is width x height nibbles of GDDRAM
+        // this is width x height nibbles of GDDRAM, 1 byte for every two pixels
         oled->gddram_buffer_len = sizeof(uint8_t) * (oled->width * oled->height / 2) + 1;
         oled->gddram_buffer = calloc(sizeof(uint8_t), oled->gddram_buffer_len);
         if (!oled->gddram_buffer) {
@@ -557,10 +557,21 @@ ssd1322_6800_t *ssd1306_i2c_open(uint16_t width, uint16_t height, FILE *logerr)
     return oled;
 }
 
+void dump_raw_framebuffer(ssd1322_framebuffer_t *fbp)
+{
+    for (int i = 0; i < fbp->len; i++)
+    {
+        printf("%1x", (fbp->buffer[i] & 0xF0) >> 4);
+        printf("%1x ", fbp->buffer[i] & 0x0F);
+    }
+
+    printf("\n");
+}
+
 int main()
 {
-    ssd1322_6800_t *oled;
-    oled = ssd1306_i2c_open(256, 64, NULL);
+    //ssd1322_6800_t *oled;
+    //oled = ssd1306_i2c_open(256, 64, NULL);
 
     int rc = 0;
     ssd1322_err_t *errp = NULL;
@@ -571,34 +582,38 @@ int main()
             rc = -1;
             break;
         }
+
         fprintf(errp->err_fp, "DEBUG: Using library version: %s\n", ssd1322_fb_version());
+
         fbp = ssd1322_framebuffer_create(256, 64, errp);
         if (!fbp) {
             rc = -1;
             break;
         }
+
         fprintf(errp->err_fp, "DEBUG: draw horizontal line from (0,0) to (64,0)\n");
         ssd1322_framebuffer_draw_line(fbp, 0, 0, 64, 0, true);
-        //ssd1322_framebuffer_bitdump_nospace(fbp);
-        ssd1306_i2c_display_update(oled, fbp);
-        sleep(1);
-	ssd1322_framebuffer_clear(fbp);
-	ssd1306_i2c_display_update(oled, fbp);
-        sleep(1);
+        ssd1322_framebuffer_bitdump_nospace(fbp);
+        ssd1322_framebuffer_clear(fbp);
         fprintf(errp->err_fp, "DEBUG: draw vertical line from (64,0) to (64,32)\n");
         ssd1322_framebuffer_draw_line(fbp, 64, 0, 64, 32, true);
-        //ssd1322_framebuffer_bitdump_nospace(fbp);
-        ssd1306_i2c_display_update(oled, fbp);
-        sleep(1);
-	ssd1322_framebuffer_clear(fbp);
-        ssd1306_i2c_display_update(oled, fbp);
-        sleep(1);
-	fprintf(errp->err_fp, "DEBUG: draw vertical line from (0,0) to (64,32)\n");
+        ssd1322_framebuffer_bitdump_nospace(fbp);
+        ssd1322_framebuffer_clear(fbp);
+        fprintf(errp->err_fp, "DEBUG: draw vertical line from (0,0) to (64,32)\n");
         ssd1322_framebuffer_draw_line(fbp, 0, 0, 64, 32, true);
-        //ssd1322_framebuffer_bitdump_nospace(fbp);
-        ssd1306_i2c_display_update(oled, fbp);
-        sleep(1);
-	ssd1322_framebuffer_clear(fbp);ssd1306_i2c_display_update(oled, fbp);
+        ssd1322_framebuffer_bitdump_nospace(fbp);
+        ssd1322_framebuffer_clear(fbp);
+        fprintf(errp->err_fp, "DEBUG: draw vertical line from (0,0) to (64,32)\n");
+        char buf[16] = { 0 };
+        snprintf(buf, sizeof(buf) - 1, "%02d:%02d:%02d", 1, 58, 15);
+        printf("INFO: Time is %s\n", buf);
+        ssd1322_framebuffer_box_t bbox;
+        ssd1322_framebuffer_draw_text(fbp, buf, 0, 32, 16, SSD1322_FONT_DEFAULT, 4, &bbox);
+        ssd1322_framebuffer_bitdump_nospace(fbp);
+        ssd1322_framebuffer_clear(fbp);
+        
+
+
     } while (0);
     if (fbp)
         ssd1322_framebuffer_destroy(fbp);

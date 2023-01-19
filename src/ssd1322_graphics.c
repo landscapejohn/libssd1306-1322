@@ -4,7 +4,7 @@
  * SOFTWARE: LIBSSD13xx-i2c
  * LICENSE: Refer license file
  * 
- * Modified from ssd1306_i2c.c: 2023 John Hodge
+ * Modified from ssd1306_graphics.c: 2023 John Hodge
  */
 
 #include <features.h>
@@ -461,6 +461,24 @@ ssd1322_framebuffer_t *ssd1322_framebuffer_create(uint16_t width, uint16_t heigh
     return fbp;
 }
 
+uint16_t get_buffer_index_from_xy(ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y)
+{
+    SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
+
+    uint16_t w = fbp->width;
+    uint16_t h = fbp->width;
+
+    if (x >= 0 && x < w && y >= 0 && y < h) {
+        uint16_t byte_x = x / 2;
+        uint16_t byte_y = y * (w / 2);
+        uint16_t buffer_index = (byte_x + byte_y);
+
+        return buffer_index;
+    }
+
+    return -1;
+}
+
 void ssd1322_framebuffer_destroy(ssd1322_framebuffer_t *fbp)
 {
     if (fbp) {
@@ -480,7 +498,7 @@ void ssd1322_framebuffer_destroy(ssd1322_framebuffer_t *fbp)
     }
 }
 
-int ssd1322_framebuffer_hexdump(const ssd1322_framebuffer_t *fbp)
+int ssd1322_framebuffer_hexdump(ssd1322_framebuffer_t *fbp)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
     FILE *err_fp = SSD1322_FB_GET_ERRFP(fbp);
@@ -503,17 +521,18 @@ int ssd1322_framebuffer_hexdump(const ssd1322_framebuffer_t *fbp)
     return 0;
 }
 
-int ssd1322_framebuffer_bitdump_custom(const ssd1322_framebuffer_t *fbp,
-    char zerobit, char onebit, bool use_space, bool use_color)
+int ssd1322_framebuffer_bitdump_custom(ssd1322_framebuffer_t *fbp, char zerobit, char onebit, bool use_space, bool use_color)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
     FILE *err_fp = SSD1322_FB_GET_ERRFP(fbp);
+
     if (!isprint(zerobit)) {
         zerobit = '.';
     }
     if (!isprint(onebit)) {
         onebit = '|';
     }
+
     for (size_t y = 0; y < fbp->height; ++y) {
         fprintf(err_fp, "%04zX ", y);
         for (size_t x = 0; x < fbp->width; ++x) {
@@ -530,6 +549,7 @@ int ssd1322_framebuffer_bitdump_custom(const ssd1322_framebuffer_t *fbp,
         }
         fprintf(err_fp, "\n");
     }
+
     return 0;
 }
 
@@ -559,8 +579,7 @@ int ssd1322_framebuffer_draw_bricks(ssd1322_framebuffer_t *fbp)
     return 0;
 }
 
-int ssd1322_framebuffer_put_pixel_rotation(ssd1322_framebuffer_t *fbp,
-    uint16_t x, uint16_t y, bool color, uint8_t rotation_flag)
+int ssd1322_framebuffer_put_pixel_rotation(ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y, bool color, uint8_t rotation_flag)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
     uint16_t w = fbp->width;
@@ -587,36 +606,33 @@ int ssd1322_framebuffer_put_pixel_rotation(ssd1322_framebuffer_t *fbp,
     else {
         return -1;
     }
-    if (color) {
-        fbp->buffer[x + (y / 8) * w] |= (1 << (y & 7));
-    }
-    else {
-        fbp->buffer[x + (y / 8) * w] &= ~(1 << (y & 7));
-    }
+
+    uint8_t mask = x % 2 ? 0x0F : 0xF0;
+
+    //printf("x: %d y: %d w: %d h: %d w/2: %d byte_x: %d byte_y: %d buffer_index: %d\n", x, y, w, h, (w/2), byte_x, byte_y, buffer_index);
+    return fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] = 0xFF & mask;
+
     return 0;
 }
 
 int ssd1322_framebuffer_invert_pixel(ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
-    uint16_t w = fbp->width;
-    uint16_t h = fbp->height;
-    if (x >= 0 && x < w && y >= 0 && y < h) {
-        fbp->buffer[x + (y / 8) * w] ^= (1 << (y & 7));
-        return 0;
-    }
+
+    fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] ^= (1 << (y & 7));
+    return 0;
+
     return -1;
 }
 
-int8_t ssd1322_framebuffer_get_pixel(const ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y)
+int8_t ssd1322_framebuffer_get_pixel(ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
     uint16_t w = fbp->width;
-    uint16_t h = fbp->height;
-    if (x >= 0 && x < w && y >= 0 && y < h) {
-        return fbp->buffer[(x * h) + y];
-    }
-    return -1;
+    uint16_t h = fbp->width;
+    uint8_t mask = x % 2 ? 0x0F : 0xF0;
+
+    return fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] & mask;
 }
 
 static void ssd1322_framebuffer_draw_text_options_handler(
