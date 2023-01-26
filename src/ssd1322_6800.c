@@ -603,17 +603,15 @@ int main()
         ssd1322_framebuffer_draw_line(fbp, 0, 0, 64, 32, true);
         ssd1322_framebuffer_bitdump_nospace(fbp);
         ssd1322_framebuffer_clear(fbp);
-        fprintf(errp->err_fp, "DEBUG: draw vertical line from (0,0) to (64,32)\n");
+        fprintf(errp->err_fp, "DEBUG: draw text\n");
         char buf[16] = { 0 };
-        snprintf(buf, sizeof(buf) - 1, "%02d:%02d:%02d", 1, 58, 15);
+        snprintf(buf, sizeof(buf) - 1, "%02d:%02d.%02d", 1, 58, 15);
         printf("INFO: Time is %s\n", buf);
         ssd1322_framebuffer_box_t bbox;
-        ssd1322_framebuffer_draw_text(fbp, buf, 0, 32, 16, SSD1322_FONT_DEFAULT, 4, &bbox);
+        ssd1322_framebuffer_draw_text(fbp, buf, 0, 32, 24, SSD1322_FONT_FREEMONO, 6, &bbox);
         ssd1322_framebuffer_bitdump_nospace(fbp);
         ssd1322_framebuffer_clear(fbp);
         
-
-
     } while (0);
     if (fbp)
         ssd1322_framebuffer_destroy(fbp);

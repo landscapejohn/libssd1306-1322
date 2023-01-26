@@ -337,6 +337,7 @@ static int ssd1322_font_render_string(ssd1322_framebuffer_t *fbp,
                         for (FT_Int j = y_bmap, q = 0; j < ymax_bmap; ++j, ++q) {
                             if (i < 0 || j < 0 || i >= fbp->width || j >= fbp->height)
                                 continue;
+                            bool wha = bmap->buffer[q * bmap->width + p];
                             ssd1322_framebuffer_put_pixel_rotation(fbp, (uint8_t)(i & 0xFF),
                                 (uint8_t)(j & 0xFF),
                                 bmap->buffer[q * bmap->width + p],
@@ -607,19 +608,24 @@ int ssd1322_framebuffer_put_pixel_rotation(ssd1322_framebuffer_t *fbp, uint16_t 
         return -1;
     }
 
+    // SSD1322 handles two 4-bit pixels at a time as one byte.
     uint8_t mask = x % 2 ? 0x0F : 0xF0;
 
-    //printf("x: %d y: %d w: %d h: %d w/2: %d byte_x: %d byte_y: %d buffer_index: %d\n", x, y, w, h, (w/2), byte_x, byte_y, buffer_index);
-    return fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] |= 0xFF & mask;
-
-    return 0;
+    if (color) {
+        fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] |= (0xFF & mask);
+    }
+    else {
+        fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] &= ~(0xFF & mask);
+    }
 }
 
 int ssd1322_framebuffer_invert_pixel(ssd1322_framebuffer_t *fbp, uint16_t x, uint16_t y)
 {
     SSD1322_FB_BAD_PTR_RETURN(fbp, -1);
 
-    fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] ^= (1 << (y & 7));
+    uint8_t mask = x % 2 ? 0x0F : 0xF0;
+
+    fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] ^= mask;
     return 0;
 
     return -1;
