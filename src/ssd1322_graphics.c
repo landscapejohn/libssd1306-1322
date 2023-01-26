@@ -610,7 +610,7 @@ int ssd1322_framebuffer_put_pixel_rotation(ssd1322_framebuffer_t *fbp, uint16_t 
     uint8_t mask = x % 2 ? 0x0F : 0xF0;
 
     //printf("x: %d y: %d w: %d h: %d w/2: %d byte_x: %d byte_y: %d buffer_index: %d\n", x, y, w, h, (w/2), byte_x, byte_y, buffer_index);
-    return fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] = 0xFF & mask;
+    return fbp->buffer[get_buffer_index_from_xy(fbp, x, y)] |= 0xFF & mask;
 
     return 0;
 }
