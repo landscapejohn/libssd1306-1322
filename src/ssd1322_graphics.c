@@ -99,6 +99,8 @@ static const char *ssd1322_fontface_paths[SSD1322_FONT_MAX + 1] = {
     "/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf",
     "/usr/share/fonts/truetype/freefont/FreeMonoOblique.ttf",
     "/usr/share/fonts/truetype/freefont/FreeMonoBoldOblique.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
     NULL
 };
 static const char *ssd1322_fontface_names[SSD1322_FONT_MAX + 1] = {
@@ -110,7 +112,9 @@ static const char *ssd1322_fontface_names[SSD1322_FONT_MAX + 1] = {
     "SSD1322_FONT_FREEMONO_BOLD",
     "SSD1322_FONT_FREEMONO_ITALIC",
     "SSD1322_FONT_FREEMONO_BOLDITALIC",
-    "SSD1322_FONT_CUSTOM"
+    "SSD1322_FONT_CUSTOM",
+    "SSD1322_FONT_DEJAVU",
+    "SSD1322_FONT_FREESANS"
 };
 
 struct ssd1322_font_ {
